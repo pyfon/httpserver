@@ -1,16 +1,16 @@
 #include "http.h"
 #include <iostream>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <csignal>
 #include <cstdlib>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/uio.h>
-#include <unistd.h>
-
-#define BUFSIZE 256
+#include <sys/time.h>
 
 static int sockfd;
 
@@ -34,9 +34,10 @@ int main(){
     if (sockfd < 0)
         error("Error creating socket");
     ok("Socket created");
-    // To avoid re-binding issues
-    bool reuseaddr_on = true;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on, sizeof(int));
+
+    // Set socket options
+    bool toggle = true;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &toggle, sizeof(int)); // To avoid re-binding issues
 
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
 
@@ -71,12 +72,36 @@ int main(){
 
 void handle_connection(int sockfd) {
 
-    std::array<char, BUFSIZE> buffer;
-    buffer.fill(0);
-    auto n = read(sockfd, buffer.data(), BUFSIZE - 1);
-    if (n < 0)
+    // TODO socket timeouts
+
+    const int block_size = 1024;
+    constexpr int buffer_size = block_size * 8; // 8192 bytes
+    std::vector<char> buffer;
+    int bytes_read = 0;
+
+    try {
+        do {
+            // read() from socket into block
+            std::array<char, block_size> block;
+            bytes_read = read(sockfd, block.data(), block_size);
+            // Check if the data won't exceed our buffer_size limit upon insertion
+            if (buffer.size() + bytes_read > buffer_size - 1)
+                throw ServerException(http_code::HTTP_CLI_ERR, "Request length too long");
+            // Insert the block into the buffer
+            buffer.reserve(bytes_read); // For performance
+            buffer.insert(buffer.end(), block.begin(), block.begin() + bytes_read);
+        } while (! contains_double_newline(buffer.cbegin(), buffer.cend())); // In case there is more to come eg interactive session
+    } catch (const ServerException &e) {
+        log(e);
+        return;
+        // TODO send error HTTP response, then return.
+    }
+
+    if (bytes_read < 0)
         error("Error reading from the socket");
     
+    buffer.push_back('\0');
+
     HTTP_Request request;
     try {
         request.parse(buffer.data());
@@ -85,7 +110,8 @@ void handle_connection(int sockfd) {
         // send error
         // maybe add a method to HTTP_Response called generateerror() that excepts const ServerException&?
         // then send response.dump()
-        log(std::to_string(static_cast<int>(e.code())).append(" Error: ").append(e.what())); // ew.
+        log(e);
+        return;
     }
 
     // debug

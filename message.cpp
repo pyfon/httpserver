@@ -15,3 +15,9 @@ void log(const std::string &msg) {
     std::cout << msg << std::endl;
 
 }
+
+void log(const ServerException& e) {
+
+    log(std::to_string(static_cast<int>(e.code())).append(" Error: ").append(e.what())); // ew.
+
+}

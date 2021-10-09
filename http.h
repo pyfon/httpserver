@@ -100,7 +100,25 @@ public:
 void ok(const std::string&);
 void error(const std::string&);
 void log(const std::string&);
+void log(const ServerException&);
 // Tokenise strings by the delimiter (arg2) in the input string (arg1), return results as vector.
 std::vector<std::string> splitline(const std::string&, const std::string&);
 // Returns true if CR from end of string was stripped.
 bool strip_cr(std::string&);
+
+// Templates need to be in .h for compiler/linker reasons
+template <class InputIterator> bool contains_double_newline(InputIterator first, InputIterator last) {
+    bool crlf_found = false; // If found in the last iteration
+    while (first != last) {
+        if (*first == '\r' && *(first + 1) == '\n'){
+            if (crlf_found)
+                return true;
+            crlf_found = true;
+            first += 2;
+        } else {
+            crlf_found = false;
+            first++;
+        }
+    }
+    return false;
+}
