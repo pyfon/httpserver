@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <csignal>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -10,15 +12,20 @@
 
 #define BUFSIZE 256
 
-void handle_connection(int sockfd);
+static int sockfd;
+
+void handle_connection(int);
+void signal_handler(int);
 
 int main(){
 
-    std::cout << "Welcome to Nathan's Webserver!\n";
-    std::cout << "Initialising...\n";
+    signal(SIGINT, signal_handler);
+
+    log("Welcome to Nathan's Webserver!");
+    log("Initialising...");
 
     // Define vars
-    int sockfd, newsockfd, portno = LISTEN_PORT;
+    int newsockfd, portno = LISTEN_PORT;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
@@ -27,6 +34,9 @@ int main(){
     if (sockfd < 0)
         error("Error creating socket");
     ok("Socket created");
+    // To avoid re-binding issues
+    bool reuseaddr_on = true;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on, sizeof(int));
 
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
 
@@ -82,4 +92,11 @@ void handle_connection(int sockfd) {
     log(request.dump());
     // request.resource()
     // check if file exists, send if not 404
+}
+
+void signal_handler(int signum) {
+    log(std::string("\nInterrupt signal (").append(std::to_string(signum)).append(") received.\nExiting."));
+    if (sockfd > 0)
+        close(sockfd);
+    exit(0);
 }
