@@ -72,18 +72,28 @@ int main(){
 
 void handle_connection(int sockfd) {
 
-    // TODO socket timeouts
-
     const int block_size = 1024;
     constexpr int buffer_size = block_size * 8; // 8192 bytes
+    const int timeout_sec = 30;
+
+    // Set socket timeout
+    struct timeval tv;
+    tv.tv_sec = timeout_sec;
+    tv.tv_usec = 0;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+        error("setsockopt() failed");
+
     std::vector<char> buffer;
     int bytes_read = 0;
 
     try {
+        std::array<char, block_size> block;
         do {
             // read() from socket into block
-            std::array<char, block_size> block;
             bytes_read = read(sockfd, block.data(), block_size);
+            // Check if there is data to process
+            if (bytes_read <= 0)
+                throw ServerException(http_code::HTTP_REQ_TIMEOUT, "Request timeout");
             // Check if the data won't exceed our buffer_size limit upon insertion
             if (buffer.size() + bytes_read > buffer_size - 1)
                 throw ServerException(http_code::HTTP_CLI_ERR, "Request length too long");

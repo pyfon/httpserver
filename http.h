@@ -26,6 +26,7 @@ enum class http_code {
     HTTP_RD_TEMP = 302,
     HTTP_CLI_ERR = 400,
     HTTP_NOT_FOUND = 404,
+    HTTP_REQ_TIMEOUT = 408,
     HTTP_SERVER_ERR = 500,
     HTTP_NOT_IMPLEMENTED = 501
 };
