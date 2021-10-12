@@ -1,6 +1,10 @@
 #include "http.h"
 #include <algorithm>
 #include <cctype>
+#include <chrono>  // chrono::system_clock
+#include <ctime> // localtime
+#include <sstream> // stringstream
+#include <iomanip> // put_time
 
 // Splitline
 
@@ -73,5 +77,15 @@ void HeaderMap::add(std::string line) {
 
     map[elems[0]] = elems[1];
     return;
+
+}
+
+std::string time_now_fmt(std::string fmt) {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), fmt.c_str());
+    return ss.str();
 
 }

@@ -25,9 +25,9 @@ void HTTP_Request::parse(const std::string& data) {
         // Parse request method
         auto reqmethod = tokens[0];
         if (reqmethod == "GET")
-            method = http_method::GET;
+            _method = http_method::GET;
         else if (reqmethod == "HEAD")
-            method = http_method::HEAD;
+            _method = http_method::HEAD;
         else
             throw ServerException(http_code::HTTP_NOT_IMPLEMENTED, "HTTP Method not supported"); // TODO method {} not supported when C++20 formatting
 
@@ -69,7 +69,12 @@ void HTTP_Request::parse(const std::string& data) {
 
 }
 
-std::string HTTP_Request::target() {
+http_method HTTP_Request::method() const noexcept {
+    return _method;
+}
+
+
+std::string HTTP_Request::target() const noexcept {
     return _target;
 }
 
@@ -78,9 +83,9 @@ std::string HTTP_Request::dump() {
 
     std::string ret;
     // I don't like this
-    if (method == http_method::GET)
+    if (_method == http_method::GET)
         ret.append("GET ");
-    else if (method == http_method::HEAD)
+    else if (_method == http_method::HEAD)
         ret.append("HEAD ");
     ret.append(_target);
     ret.append(" HTTP/");
@@ -93,4 +98,8 @@ std::string HTTP_Request::dump() {
     ret.append(msg_body);
     return ret;
 
+}
+
+std::string HTTP_Request::protocol() const noexcept {
+    return protocol_version;
 }

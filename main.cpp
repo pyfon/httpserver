@@ -19,13 +19,15 @@ void signal_handler(int);
 
 int main(){
 
+    const int listen_port = 80;
+
     signal(SIGINT, signal_handler);
 
     log("Welcome to Nathan's Webserver!");
     log("Initialising...");
 
     // Define vars
-    int newsockfd, portno = LISTEN_PORT;
+    int newsockfd, portno = listen_port;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
@@ -52,7 +54,7 @@ int main(){
     // Listen
     listen(sockfd, 5);
     // God I can't wait for C++20 std::format support on GCC/Clang
-    ok(std::string("Started listening on port ").append(std::to_string(LISTEN_PORT)));
+    ok(std::string("Started listening on port ").append(std::to_string(listen_port)));
 
     signal(SIGCHLD, SIG_IGN);
     clilen = sizeof(cli_addr);
@@ -106,9 +108,9 @@ void handle_connection(int sockfd) {
             buffer.insert(buffer.end(), block.begin(), block.begin() + bytes_read);
         } while (! contains_double_newline(buffer.cbegin(), buffer.cend())); // In case there is more to come eg interactive session
     } catch (const ServerException &e) {
+        HTTP_Response(e).send_to(sockfd); // TODO loop this on a try catch until x number
         log(e);
         return;
-        // TODO send error HTTP response, then return.
     }
     
     buffer.push_back('\0');
@@ -117,10 +119,14 @@ void handle_connection(int sockfd) {
     try {
         request.parse(buffer.data());
     } catch (const ServerException &e) {
-        //HTTP_Response response;
-        // send error
-        // maybe add a method to HTTP_Response called generateerror() that excepts const ServerException&?
-        // then send response.dump()
+        HTTP_Response(e).send_to(sockfd);
+        log(e);
+        return;
+    }
+
+    try { HTTP_Response(request).send_to(sockfd); }
+    catch (const ServerException &e) {
+        HTTP_Response(e).send_to(sockfd);
         log(e);
         return;
     }
