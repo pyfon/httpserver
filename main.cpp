@@ -135,6 +135,9 @@ void handle_connection(int sockfd) {
     log(request.dump());
     // request.resource()
     // check if file exists, send if not 404
+
+    close(sockfd);
+
 }
 
 void signal_handler(int signum) {

@@ -42,7 +42,7 @@ void HTTP_Request::parse(const std::string& data) {
         auto version_number = tokens[2].substr(5);
         if (std::find(supported_http_versions.begin(), supported_http_versions.end(), version_number) == supported_http_versions.end())
             throw ServerException(http_code::HTTP_NOT_IMPLEMENTED, "HTTP protocol version not supported");
-        protocol_version = version_number;
+        protocol_version = tokens[2];
 
     }
 

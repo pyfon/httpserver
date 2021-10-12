@@ -71,6 +71,7 @@ std::string HTTP_Response::generate_header() {
 
     // HTTP headers
     for (const auto &i : headers.headers()) {
+        log(i); // debug
         ret.append(i);
         ret.append("\r\n");
     }
@@ -83,7 +84,11 @@ std::string HTTP_Response::generate_header() {
 
 void HTTP_Response::update_target_path(const std::string &target) {
 
-    auto fspath = (server_path / std::filesystem::path(target)).lexically_normal();
+    if (target == "/") {
+        target_path = server_path / std::filesystem::path(index_document);
+        return;
+    }
+    auto fspath = (server_path / std::filesystem::path(target.substr(1, std::string::npos))).lexically_normal();
     auto [rootEnd, nothing] = std::mismatch(server_path.begin(), server_path.end(), fspath.begin());
     if (rootEnd != server_path.end())
         throw ServerException(http_code::HTTP_UNAUTHORIZED, "Nice try");
@@ -96,8 +101,11 @@ void HTTP_Response::update_target_path(const std::string &target) {
 void HTTP_Response::update_headers() {
 
     // Content-Length
-    if (send_body)
-        headers["Content-Length"] = std::to_string(body_size());
+    if (send_body) {
+        auto len = body_size();
+        if (len)
+            headers["Content-Length"] = std::to_string(len);
+    }
     // Date
     headers["Date"] = time_now_fmt("%a, %d %b %Y %H:%M:%S %Z");
 
@@ -118,6 +126,8 @@ int HTTP_Response::body_size() const {
 
     if (target_path.string().length()) {
         std::ifstream in(target_path.string(), std::ifstream::ate | std::ifstream::binary);
+        if (in.bad())
+            throw ServerException(http_code::HTTP_SERVER_ERR, "Couldn't open file");
         return in.tellg();
     } else {
         return msg_body.size();

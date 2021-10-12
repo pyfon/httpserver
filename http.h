@@ -97,7 +97,7 @@ private:
     bool send_body;
 
     int body_size() const; // bytes
-    std::string generate_header();
+    std::string generate_header(); // Whole HTTP header
     void update_headers(); // Content-Length requires target_path or msg_body
     // Locate relative request target on disk, save to target_path. Throws ServerException:
     void update_target_path(const std::string&);
