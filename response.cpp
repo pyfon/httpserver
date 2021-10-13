@@ -22,6 +22,11 @@ HTTP_Response::HTTP_Response(const ServerException& e) {
     send_body = true;
     update_code_reason_phrase(e.code());
     update_headers();
+    // TODO C++20 fmt
+    msg_body = std::to_string(static_cast<int>(e.code()));
+    msg_body.append(" Error: ");
+    msg_body.append(e.what());
+    msg_body.append("\r\n");
 
 }
 
@@ -47,6 +52,8 @@ void HTTP_Response::send_to(const int &sockfd) {
             if (send(sockfd, block.data(), target_file.gcount(), 0) < 0)
                 error("send() error");
         }
+        if (send(sockfd, "\r\n", 2, 0) < 0)
+            error("send() error");
 
     } else {
         if (send(sockfd, msg_body.c_str(), msg_body.size(), 0) < 0)
@@ -64,14 +71,13 @@ std::string HTTP_Response::generate_header() {
     // Status line
     ret.append(protocol_version);
     ret.append(" ");
-    ret.append(std::to_string(static_cast<int>(response_code)));
+    ret.append(std::to_string(static_cast<int>(_response_code)));
     ret.append(" ");
     ret.append(reason_phrase);
     ret.append("\r\n");
 
     // HTTP headers
     for (const auto &i : headers.headers()) {
-        log(i); // debug
         ret.append(i);
         ret.append("\r\n");
     }
@@ -124,22 +130,31 @@ void HTTP_Response::update_headers() {
 
 int HTTP_Response::body_size() const {
 
-    if (target_path.string().length()) {
-        std::ifstream in(target_path.string(), std::ifstream::ate | std::ifstream::binary);
-        if (in.bad())
-            throw ServerException(http_code::HTTP_SERVER_ERR, "Couldn't open file");
-        return in.tellg();
-    } else {
-        return msg_body.size();
+    static int size = 0;
+    if (! size) {
+        if (target_path.string().length()) {
+            std::ifstream in(target_path.string(), std::ifstream::ate | std::ifstream::binary);
+            if (in.bad())
+                throw ServerException(http_code::HTTP_SERVER_ERR, "Couldn't open file");
+            size = in.tellg();
+        } else {
+            size = msg_body.size();
+        }
     }
 
+    return size;
+
+}
+
+http_code HTTP_Response::response_code() const noexcept {
+    return _response_code;
 }
 
 void HTTP_Response::update_code_reason_phrase(const http_code& code){
 
-    response_code = code;
+    _response_code = code;
 
-    switch (response_code) {
+    switch (_response_code) {
     case http_code::HTTP_OK:
         reason_phrase = "OK";
         break;

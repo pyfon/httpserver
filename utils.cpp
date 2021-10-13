@@ -39,7 +39,7 @@ bool strip_cr(std::string &str) {
 
 // HeaderMap
 
-std::string HeaderMap::operator[](std::string key) {
+std::string &HeaderMap::operator[](std::string key) {
 
     return map[key];
 
@@ -81,11 +81,27 @@ void HeaderMap::add(std::string line) {
 }
 
 std::string time_now_fmt(std::string fmt) {
+
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
     std::stringstream ss;
     ss << std::put_time(std::localtime(&in_time_t), fmt.c_str());
     return ss.str();
+
+}
+
+std::string method_to_str(const http_method& method) noexcept {
+
+    switch (method) {
+    case http_method::GET:
+        return "GET";
+        break;
+    case http_method::HEAD:
+        return "HEAD";
+        break;
+    default:
+        return std::string();
+        break;
+    }
 
 }

@@ -12,7 +12,10 @@ void error(const std::string &msg) {
 
 void log(const std::string &msg) {
 
-    std::cout << msg << std::endl;
+    // TODO C++20 fmt
+    std::string ret = time_now_fmt("[%F %T] ");
+    ret.append(msg);
+    std::cout << ret << std::endl;
 
 }
 

@@ -57,7 +57,7 @@ class HeaderMap {
 
 public:
 
-    std::string operator[](std::string);
+    std::string &operator[](std::string);
     std::string header(std::string); // Formatted header for key
     std::vector<std::string> headers(); // List of all headers
     void add(std::string); // Parse header string and add to map
@@ -89,14 +89,13 @@ class HTTP_Response {
 private:
 
     std::filesystem::path target_path; // Path on filesystem
-    http_code response_code;
+    http_code _response_code;
     std::string reason_phrase;
     std::string protocol_version;
     HeaderMap headers;
     std::string msg_body; // Only used if target_path is empty
     bool send_body;
 
-    int body_size() const; // bytes
     std::string generate_header(); // Whole HTTP header
     void update_headers(); // Content-Length requires target_path or msg_body
     // Locate relative request target on disk, save to target_path. Throws ServerException:
@@ -108,6 +107,8 @@ public:
     HTTP_Response(const HTTP_Request&);
     HTTP_Response(const ServerException&);
     void send_to(const int&);
+    http_code response_code() const noexcept;
+    int body_size() const; // bytes
 
 };
 
@@ -122,6 +123,7 @@ std::vector<std::string> splitline(const std::string&, const std::string&);
 // Returns true if CR from end of string was stripped.
 bool strip_cr(std::string&);
 std::string time_now_fmt(std::string);
+std::string method_to_str(const http_method&) noexcept;
 
 // Templates need to be in .h for compiler/linker reasons
 template <class InputIterator> bool contains_double_newline(InputIterator first, InputIterator last) {

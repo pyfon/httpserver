@@ -9,13 +9,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/uio.h>
 #include <sys/time.h>
 
 static int sockfd;
 
-void handle_connection(int);
+void handle_connection(int, const struct sockaddr_in*);
 void signal_handler(int);
+std::string create_logline(const struct sockaddr_in*, const HTTP_Request&, const HTTP_Response&);
 
 int main(){
 
@@ -64,7 +66,7 @@ int main(){
         if (newsockfd < 0)
             error("Error on accept()");
 
-        handle_connection(newsockfd);
+        handle_connection(newsockfd, &cli_addr);
 
     }
 
@@ -72,7 +74,7 @@ int main(){
 
 }
 
-void handle_connection(int sockfd) {
+void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
 
     const int block_size = 1024;
     constexpr int buffer_size = block_size * 8; // 8192 bytes
@@ -108,7 +110,13 @@ void handle_connection(int sockfd) {
             buffer.insert(buffer.end(), block.begin(), block.begin() + bytes_read);
         } while (! contains_double_newline(buffer.cbegin(), buffer.cend())); // In case there is more to come eg interactive session
     } catch (const ServerException &e) {
-        HTTP_Response(e).send_to(sockfd); // TODO loop this on a try catch until x number
+        try {
+            HTTP_Response(e).send_to(sockfd);
+        } catch (const ServerException& e) {
+            log("Exception happened while sending exception response!");
+            log(e);
+            return;
+        }
         log(e);
         return;
     }
@@ -119,22 +127,29 @@ void handle_connection(int sockfd) {
     try {
         request.parse(buffer.data());
     } catch (const ServerException &e) {
-        HTTP_Response(e).send_to(sockfd);
-        log(e);
+        HTTP_Response error_response(e);
+        error_response.send_to(sockfd);
+        log(create_logline(cli_addr, request, error_response));
         return;
     }
 
-    try { HTTP_Response(request).send_to(sockfd); }
+    try {
+        HTTP_Response response(request);
+        response.send_to(sockfd);
+        log(create_logline(cli_addr, request, response));
+    }
     catch (const ServerException &e) {
-        HTTP_Response(e).send_to(sockfd);
-        log(e);
+        try {
+            HTTP_Response error_response(e);
+            error_response.send_to(sockfd);
+            log(create_logline(cli_addr, request, error_response));
+        } catch (const ServerException &e) {
+            log("Exception happened while sending exception response!");
+            log(e);
+            return;
+        }
         return;
     }
-
-    // debug
-    log(request.dump());
-    // request.resource()
-    // check if file exists, send if not 404
 
     close(sockfd);
 
@@ -145,4 +160,25 @@ void signal_handler(int signum) {
     if (sockfd > 0)
         close(sockfd);
     exit(0);
+}
+
+std::string create_logline(const struct sockaddr_in *cli_addr, const HTTP_Request& req, const HTTP_Response& response) {
+
+    // TODO C++20 string fmt
+    char ipaddress[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(cli_addr->sin_addr), ipaddress, INET_ADDRSTRLEN);
+    const int msg_len = 2048;
+    static char out[msg_len];
+    snprintf(out, msg_len, "%s - - %s \"%s %s %s\" %d %d\n",
+        ipaddress,
+        time_now_fmt("[%d/%b/%Y:%H:%M:%S %z]").c_str(),
+        method_to_str(req.method()).c_str(),
+        req.target().c_str(),
+        req.protocol().c_str(),
+        static_cast<int>(response.response_code()),
+        response.body_size()
+    );
+
+    return out;
+
 }
