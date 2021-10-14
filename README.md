@@ -5,7 +5,7 @@ This program was written as a practise/fun exercise, it is **not** for productio
 
 ## Build
 After you've cloned this repo:  
-1. Install needed libraries:  
+1. Change directory:  
 `cd httpserver`
 2. Build the project:  
 `make`
