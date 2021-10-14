@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -g -Wall
+CXXFLAGS = -std=c++17 -Wall
 SRCFILES = $(wildcard *.cpp)
 EXEDIR = bin
 EXECUTABLE = $(EXEDIR)/webserver
