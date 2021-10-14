@@ -7,6 +7,7 @@
 
 HTTP_Response::HTTP_Response(const HTTP_Request& request) {
 
+    _body_size = 0;
     protocol_version = request.protocol();
     update_target_path(request.target()); // May throw ServerException
     update_code_reason_phrase(http_code::HTTP_OK);
@@ -19,6 +20,7 @@ HTTP_Response::HTTP_Response(const HTTP_Request& request) {
 
 HTTP_Response::HTTP_Response(const ServerException& e) {
 
+    _body_size = 0;
     protocol_version = "HTTP/1.1";
     send_body = true;
     update_code_reason_phrase(e.code());
@@ -142,23 +144,25 @@ void HTTP_Response::update_headers() {
         headers["Content-Type"] = mime_type;
     }
 
+    // Connection
+    headers["Connection"] = "close";
+
 }
 
-int HTTP_Response::body_size() const {
+int HTTP_Response::body_size() {
 
-    static int size = 0;
-    if (! size) {
+    if (! _body_size) {
         if (target_path.string().length()) {
             std::ifstream in(target_path.string(), std::ifstream::ate | std::ifstream::binary);
             if (in.bad())
                 throw ServerException(http_code::HTTP_SERVER_ERR, "Couldn't open file");
-            size = in.tellg();
+            _body_size = in.tellg();
         } else {
-            size = msg_body.size();
+            _body_size = msg_body.size();
         }
     }
 
-    return size;
+    return _body_size;
 
 }
 

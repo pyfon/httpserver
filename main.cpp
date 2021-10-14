@@ -22,7 +22,7 @@ static int sockfd;
 
 void handle_connection(int, const struct sockaddr_in*);
 void signal_handler(int);
-std::string create_logline(const struct sockaddr_in*, const HTTP_Request&, const HTTP_Response&);
+std::string create_logline(const struct sockaddr_in*, const HTTP_Request&, HTTP_Response&);
 void print_help_exit();
 
 int main(int argc, char **argv){
@@ -137,7 +137,7 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
 
     const int block_size = 1024;
     constexpr int buffer_size = block_size * 8; // 8192 bytes
-    /*const int timeout_sec = 30;
+    const int timeout_sec = 30;
 
     // Set socket timeout
     static struct timeval tv;
@@ -145,7 +145,7 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
     tv.tv_usec = 0;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         error("setsockopt() failed");
-    */
+
     std::vector<char> buffer;
     int bytes_read = 0;
 
@@ -223,7 +223,7 @@ void signal_handler(int signum) {
     exit(0);
 }
 
-std::string create_logline(const struct sockaddr_in *cli_addr, const HTTP_Request& req, const HTTP_Response& response) {
+std::string create_logline(const struct sockaddr_in *cli_addr, const HTTP_Request& req, HTTP_Response& response) {
 
     // TODO C++20 string fmt
     char ipaddress[INET_ADDRSTRLEN];

@@ -97,6 +97,7 @@ private:
     HeaderMap headers;
     std::string msg_body; // Only used if target_path is empty
     bool send_body;
+    int _body_size;
 
     std::string generate_header(); // Whole HTTP header
     void update_headers(); // Content-Length requires target_path or msg_body
@@ -110,7 +111,7 @@ public:
     HTTP_Response(const ServerException&);
     void send_to(const int&);
     http_code response_code() const noexcept;
-    int body_size() const; // bytes
+    int body_size(); // bytes
 
 };
 
