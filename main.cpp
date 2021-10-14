@@ -100,6 +100,9 @@ int main(int argc, char **argv){
     // Set socket options
     bool toggle = true;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &toggle, sizeof(int)); // To avoid re-binding issues
+    // Ignore SIGPIPE
+    struct sigaction sigpipe { SIG_IGN };
+    sigaction(SIGPIPE, &sigpipe, NULL);
 
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
 
