@@ -137,7 +137,7 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
 
     const int block_size = 1024;
     constexpr int buffer_size = block_size * 8; // 8192 bytes
-    const int timeout_sec = 30;
+    /*const int timeout_sec = 30;
 
     // Set socket timeout
     static struct timeval tv;
@@ -145,7 +145,7 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
     tv.tv_usec = 0;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         error("setsockopt() failed");
-
+    */
     std::vector<char> buffer;
     int bytes_read = 0;
 
@@ -158,8 +158,9 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
             if (bytes_read <= 0) {
                 if (bytes_read == 0)
                     throw ServerException(http_code::HTTP_REQ_TIMEOUT, "Request timeout");
-                else
-                    error("Error reading from the socket");
+                else {
+                    return;
+                }
             }
             // Check if the data won't exceed our buffer_size limit upon insertion
             if (buffer.size() + bytes_read > buffer_size - 1)

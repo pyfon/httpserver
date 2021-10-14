@@ -121,9 +121,16 @@ void HTTP_Response::update_headers() {
         std::string ext = target_path.extension();
         std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return std::tolower(c); });
         // This could be improved MASSIVELY
+        // Like this is awful.
         const std::string plaintext_files[] = {".css", ".js", ".php", ".txt", ".c", ".cpp", ".ini"};
         if (ext == ".html" || ext == ".htm")
             mime_type = "text/html";
+        else if (ext == ".jpg" || ext == ".jpeg")
+            mime_type = "image/jpeg";
+        else if (ext == "png")
+            mime_type = "image/png";
+        else if (ext == "bmp")
+            mime_type = "image/bmp";
         else {
             for (const auto &i : plaintext_files) {
                 if (ext == i) {
