@@ -1,11 +1,13 @@
 #include "http.h"
 #include <iostream>
 #include <algorithm>
+#include <thread>
 #include <cstdio>
 #include <cstring>
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,13 +15,17 @@
 #include <sys/uio.h>
 #include <sys/time.h>
 
+
+std::filesystem::path server_path = ".";
+std::string index_document = "index.html";
 static int sockfd;
 
 void handle_connection(int, const struct sockaddr_in*);
 void signal_handler(int);
 std::string create_logline(const struct sockaddr_in*, const HTTP_Request&, const HTTP_Response&);
+void print_help_exit();
 
-int main(){
+int main(int argc, char **argv){
 
     const int listen_port = 80;
 
@@ -32,6 +38,58 @@ int main(){
     int newsockfd, portno = listen_port;
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
+
+    // Parse command line args
+    int c;
+    while (true) {
+        static struct option long_options[] = {
+            {"directory", required_argument, 0, 'd'},
+            {"help", no_argument, 0, 'h'},
+            {"index-document", required_argument, 0, 'i'},
+            {0, 0, 0, 0}
+        };
+        int option_index = 0;
+        c = getopt_long(argc, argv, "d:hi:", long_options, &option_index);
+
+        // Detect end of options
+        if (c == -1)
+            break;
+        switch (c) {
+            // Flag set
+            case 0:
+                break;
+            case ':':
+                error_no_perror("Missing argument");
+                break;
+            case '?':
+                error_no_perror("Unknown argument");
+                break;
+            case 'd':
+                server_path = optarg;
+                break;
+            case 'h':
+                print_help_exit();
+                break;
+            case 'i':
+                index_document = optarg;
+                break;
+            default:
+                break;
+        }
+
+    }
+
+    // Check paths exist
+    if (! std::filesystem::exists(server_path))
+        error_no_perror(std::string("Server directory ").append(server_path).append(" does not exist."));
+    if (! std::filesystem::exists(server_path))
+        error_no_perror(std::string("Server directory ").append(server_path).append(" does not exist."));
+    else if (! std::filesystem::is_directory(server_path))
+        error_no_perror(server_path.append(" is not a directory"));
+    else
+        ok("Server path directory found");
+    
+    server_path = std::filesystem::canonical(std::filesystem::absolute(server_path).lexically_normal());
 
     // Create socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -66,7 +124,8 @@ int main(){
         if (newsockfd < 0)
             error("Error on accept()");
 
-        handle_connection(newsockfd, &cli_addr);
+        std::thread connection_thread(handle_connection, newsockfd, &cli_addr);
+        connection_thread.detach();
 
     }
 
@@ -127,6 +186,7 @@ void handle_connection(int sockfd, const struct sockaddr_in* cli_addr) {
     try {
         request.parse(buffer.data());
     } catch (const ServerException &e) {
+        log(e);
         HTTP_Response error_response(e);
         error_response.send_to(sockfd);
         log(create_logline(cli_addr, request, error_response));
@@ -169,7 +229,7 @@ std::string create_logline(const struct sockaddr_in *cli_addr, const HTTP_Reques
     inet_ntop(AF_INET, &(cli_addr->sin_addr), ipaddress, INET_ADDRSTRLEN);
     const int msg_len = 2048;
     static char out[msg_len];
-    snprintf(out, msg_len, "%s - - %s \"%s %s %s\" %d %d\n",
+    snprintf(out, msg_len, "%s - - %s \"%s %s %s\" %d %d",
         ipaddress,
         time_now_fmt("[%d/%b/%Y:%H:%M:%S %z]").c_str(),
         method_to_str(req.method()).c_str(),
@@ -180,5 +240,18 @@ std::string create_logline(const struct sockaddr_in *cli_addr, const HTTP_Reques
     );
 
     return out;
+
+}
+
+void print_help_exit() {
+    std::cout << "Nathan's Webserver \n\
+    Options:\n \
+    -d, --directory <dir> \n\
+    \tServe content from <dir> (default \".\") \n\
+    -h, --help \n\
+    \t Print this help message and exit \n\
+    -i, --index-document <file> \n\
+    \tUse <file> as default document (default \"index.html\")" << std::endl;
+    exit(0);
 
 }

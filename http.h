@@ -5,14 +5,15 @@
 #include <array>
 #include <iterator>
 #include <filesystem> // C++17
+#include <utility>
 
 // Typedefs
 
 // Constants
 
 const std::array<std::string, 5> supported_http_versions {"0.9", "1.0", "1.1", "2", "3"};
-const std::filesystem::path server_path = "/home/nathan/httpserver";
-const std::string index_document = "index.html";
+extern std::filesystem::path server_path;
+extern std::string index_document;
 
 // Enums
 
@@ -54,6 +55,7 @@ public:
 class HeaderMap {
 
     std::unordered_map<std::string, std::string> map;
+    std::pair<std::string, std::string> split_header(std::string&); // Into key, value
 
 public:
 
@@ -116,6 +118,7 @@ public:
 
 void ok(const std::string&);
 void error(const std::string&);
+void error_no_perror(const std::string &msg);
 void log(const std::string&);
 void log(const ServerException&);
 // Tokenise strings by the delimiter (arg2) in the input string (arg1), return results as vector.
@@ -124,6 +127,7 @@ std::vector<std::string> splitline(const std::string&, const std::string&);
 bool strip_cr(std::string&);
 std::string time_now_fmt(std::string);
 std::string method_to_str(const http_method&) noexcept;
+std::string trim(const std::string&);
 
 // Templates need to be in .h for compiler/linker reasons
 template <class InputIterator> bool contains_double_newline(InputIterator first, InputIterator last) {

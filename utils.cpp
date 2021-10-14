@@ -27,6 +27,15 @@ std::vector<std::string> splitline(const std::string& line, const std::string& d
 
 // Strip CR
 
+std::string trim(const std::string& str) {
+    const auto strbegin = str.find_first_not_of(" ");
+    if (strbegin == std::string::npos)
+        return "";
+    const auto strend = str.find_last_not_of(" ");
+    const auto strrange = strend - strbegin + 1;
+    return str.substr(strbegin, strrange);
+}
+
 bool strip_cr(std::string &str) {
 
     if (str.back() == '\r') {
@@ -68,15 +77,19 @@ std::vector<std::string> HeaderMap::headers() {
 
 void HeaderMap::add(std::string line) {
 
-    auto elems = splitline(line, ":");
-    if (elems.size() != 2)
-        throw ServerException(http_code::HTTP_CLI_ERR, std::string("Header ").append(line).append(" not valid")); // TODO replace with C++20 fmt
-    // Strip whitespace
-    for (auto &i : elems)
-        i.erase(std::remove_if(i.begin(), i.end(), isspace), i.end());
-
-    map[elems[0]] = elems[1];
+    auto split = split_header(line);
+    map[split.first] = split.second;
     return;
+
+}
+
+std::pair<std::string, std::string> HeaderMap::split_header(std::string& line) {
+
+    const std::string delim = ":";
+    auto pos = line.find(delim);
+    if (pos == std::string::npos)
+        throw ServerException(http_code::HTTP_CLI_ERR, std::string("Header ").append(line).append(" not valid")); // TODO replace with C++20 fmt
+    return std::make_pair(trim(line.substr(0, pos)), trim(line.substr(pos, std::string::npos)));
 
 }
 

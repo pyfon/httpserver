@@ -1,5 +1,7 @@
 #include "http.h"
+#include <algorithm>
 #include <fstream>
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -8,7 +10,6 @@ HTTP_Response::HTTP_Response(const HTTP_Request& request) {
     protocol_version = request.protocol();
     update_target_path(request.target()); // May throw ServerException
     update_code_reason_phrase(http_code::HTTP_OK);
-    update_headers();
     if (request.method() == http_method::HEAD)
         send_body = false;
     else
@@ -21,7 +22,6 @@ HTTP_Response::HTTP_Response(const ServerException& e) {
     protocol_version = "HTTP/1.1";
     send_body = true;
     update_code_reason_phrase(e.code());
-    update_headers();
     // TODO C++20 fmt
     msg_body = std::to_string(static_cast<int>(e.code()));
     msg_body.append(" Error: ");
@@ -33,6 +33,7 @@ HTTP_Response::HTTP_Response(const ServerException& e) {
 void HTTP_Response::send_to(const int &sockfd) {
 
     // Send the header
+    update_headers();
     std::string header = generate_header();
     send(sockfd, header.c_str(), header.size(), 0);
 
@@ -64,17 +65,13 @@ void HTTP_Response::send_to(const int &sockfd) {
 
 std::string HTTP_Response::generate_header() {
 
-    // I'll consider optimising this
+    // TODO C++20 fmt
 
     std::string ret;
-
-    // Status line
-    ret.append(protocol_version);
-    ret.append(" ");
-    ret.append(std::to_string(static_cast<int>(_response_code)));
-    ret.append(" ");
-    ret.append(reason_phrase);
-    ret.append("\r\n");
+    const int status_line_len = 128;
+    char status_line[status_line_len];
+    snprintf(status_line, status_line_len, "%s %d %s\r\n", protocol_version.c_str(), static_cast<int>(_response_code), reason_phrase.c_str());
+    ret.append(status_line);
 
     // HTTP headers
     for (const auto &i : headers.headers()) {
@@ -90,14 +87,17 @@ std::string HTTP_Response::generate_header() {
 
 void HTTP_Response::update_target_path(const std::string &target) {
 
+    std::filesystem::path fspath;
+
     if (target == "/") {
-        target_path = server_path / std::filesystem::path(index_document);
-        return;
+        fspath = server_path / std::filesystem::path(index_document);
+    } else {
+        fspath = (server_path / std::filesystem::path(target.substr(1, std::string::npos))).lexically_normal();
+        auto [rootEnd, nothing] = std::mismatch(server_path.begin(), server_path.end(), fspath.begin());
+        if (rootEnd != server_path.end())
+            throw ServerException(http_code::HTTP_UNAUTHORIZED, "Nice try");
     }
-    auto fspath = (server_path / std::filesystem::path(target.substr(1, std::string::npos))).lexically_normal();
-    auto [rootEnd, nothing] = std::mismatch(server_path.begin(), server_path.end(), fspath.begin());
-    if (rootEnd != server_path.end())
-        throw ServerException(http_code::HTTP_UNAUTHORIZED, "Nice try");
+
     if (! std::filesystem::exists(fspath))
         throw ServerException(http_code::HTTP_NOT_FOUND, "Not found");
     target_path = fspath;
@@ -119,10 +119,19 @@ void HTTP_Response::update_headers() {
     if (target_path.string().length()) {
         std::string mime_type = "application/octet-stream";
         std::string ext = target_path.extension();
-        if (ext == "html")
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return std::tolower(c); });
+        // This could be improved MASSIVELY
+        const std::string plaintext_files[] = {".css", ".js", ".php", ".txt", ".c", ".cpp", ".ini"};
+        if (ext == ".html" || ext == ".htm")
             mime_type = "text/html";
-        else if (ext == "txt")
-            mime_type = "text/plain";
+        else {
+            for (const auto &i : plaintext_files) {
+                if (ext == i) {
+                    mime_type = "text/plain";
+                    break;
+                }
+            }
+        }
         headers["Content-Type"] = mime_type;
     }
 

@@ -1,7 +1,10 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -g -Wall
 SRCFILES = $(wildcard *.cpp)
-EXECUTABLE = bin/webserver
+EXEDIR = bin
+EXECUTABLE = $(EXEDIR)/webserver
+LIBS = -lpthread
 
 build:
-	$(CXX) $(CXXFLAGS) -o $(EXECUTABLE) $(SRCFILES)
+	[ -d $(EXEDIR) ] || mkdir $(EXEDIR)
+	$(CXX) $(CXXFLAGS) -o $(EXECUTABLE) $(SRCFILES) $(LIBS)

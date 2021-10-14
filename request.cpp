@@ -78,31 +78,6 @@ std::string HTTP_Request::target() const noexcept {
     return _target;
 }
 
-/*
-// for debugging
-std::string HTTP_Request::dump() {
-
-    std::string ret;
-    // I don't like this
-    if (_method == http_method::GET)
-        ret.append("GET ");
-    else if (_method == http_method::HEAD)
-        ret.append("HEAD ");
-    ret.append(_target);
-    ret.append(" ");
-    ret.append(protocol_version);
-    ret.append("\r\n");
-    for (const auto &i : headers.headers()) {
-        ret.append(i);
-        ret.append("\r\n");
-    }
-    ret.append(msg_body);
-    return ret;
-
-}
-
-*/
-
 std::string HTTP_Request::protocol() const noexcept {
     return protocol_version;
 }
