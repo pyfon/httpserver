@@ -7,9 +7,9 @@ This program was written as a practise/fun exercise, it is **not** for productio
 After you've cloned this repo:  
 1. Install needed libraries:  
 `cd httpserver`
-2. Create the .tpm directory:  
+2. Build the project:  
 `make`
-3. Copy the configuration file:  
+3. Run:  
 `sudo bin/webserver`
 
 ## Usage
