@@ -15,7 +15,6 @@ void ok(const std::string &msg) {
 void error(const std::string &msg) {
 
     msgmtx.lock();
-    std::cout << "[ \u001b[91mfatal\u001b[0m ] ";
     perror(msg.c_str());
     exit(1);
 
